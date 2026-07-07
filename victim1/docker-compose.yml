@@ -1,0 +1,78 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    container_name: sqli-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/var/www/html
+    depends_on:
+      - db
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.10
+
+  db:
+    image: mysql:8.0
+    container_name: sqli-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: labdb
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.20
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: sqli-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root123
+    depends_on:
+      - db
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.30
+
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: dvwa
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.40
+
+  webgoat:
+    image: webgoat/webgoat
+    container_name: webgoat
+    restart: unless-stopped
+    ports:
+      - "8083:8080"
+    environment:
+      - WEBGOAT_PORT=8080
+      - WEBGOAT_HOST=192.168.25.200
+    networks:
+      labnet:
+        ipv4_address: 172.20.0.50
+
+networks:
+  labnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  mysql_data:
