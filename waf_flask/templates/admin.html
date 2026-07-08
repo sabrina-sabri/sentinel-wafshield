@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-title">Admin Panel</div>
+    <div class="page-subtitle">User management and system configuration</div>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px;">
+    <div class="stat-card">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value">{{ users|length }}</div>
+        <div class="stat-sub">Registered accounts</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Admin Accounts</div>
+        <div class="stat-value" style="color:rgba(120,160,220,0.9);">{{ users|selectattr('role','equalto','admin')|list|length }}</div>
+        <div class="stat-sub">Full access</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Analyst Accounts</div>
+        <div class="stat-value" style="color:rgba(74,180,100,0.9);">{{ users|selectattr('role','equalto','user')|list|length }}</div>
+        <div class="stat-sub">Read-only access</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;">
+    <!-- Users Table -->
+    <div class="glass-card" style="padding:24px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:16px;">Registered Users</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Created</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:9px;">
+                            <div style="width:28px;height:28px;border-radius:7px;
+                                background:linear-gradient(135deg,#1a3a5c,#1e5a7a);
+                                border:1px solid rgba(255,255,255,0.1);
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:11px;font-weight:700;color:white;flex-shrink:0;">
+                                {{ user.username[0].upper() }}
+                            </div>
+                            <div>
+                                <div style="font-size:12px;color:white;font-weight:500;">{{ user.username }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge {{ 'badge-sql' if user.role == 'admin' else 'badge-other' }}">
+                            {{ user.role }}
+                        </span>
+                    </td>
+                    <td style="font-size:11px;color:rgba(255,255,255,0.35);">{{ user.created_at }}</td>
+                    <td>
+                        {% if user.username != session_username %}
+                        <form method="POST" action="/admin/delete-user" style="display:inline;">
+                            <input type="hidden" name="username" value="{{ user.username }}">
+                            <button type="submit" onclick="return confirm('Delete {{ user.username }}?')"
+                                style="font-size:10px;padding:4px 10px;border-radius:6px;cursor:pointer;
+                                background:rgba(200,50,50,0.1);border:1px solid rgba(200,50,50,0.2);
+                                color:rgba(200,80,80,0.7);transition:all 0.2s;">
+                                Delete
+                            </button>
+                        </form>
+                        {% else %}
+                        <span style="font-size:10px;color:rgba(255,255,255,0.2);">Current user</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add User -->
+    <div class="glass-card" style="padding:24px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:16px;">Add New User</div>
+        {% if msg %}
+        <div style="border-radius:9px;padding:10px 13px;margin-bottom:14px;font-size:12px;
+            {{ 'background:rgba(74,180,100,0.08);border:1px solid rgba(74,180,100,0.2);color:rgba(74,200,120,0.9);' if success else 'background:rgba(200,50,50,0.08);border:1px solid rgba(200,50,50,0.2);color:rgba(220,80,80,0.9);' }}">
+            {{ msg }}
+        </div>
+        {% endif %}
+        <form method="POST" action="/admin/add-user">
+            <label class="form-label">Username</label>
+            <input type="text" name="username" class="form-input" placeholder="Enter username" required style="margin-bottom:13px;" autocomplete="off">
+            <label class="form-label">Password</label>
+            <input type="password" name="password" class="form-input" placeholder="Enter password" required style="margin-bottom:13px;">
+            <label class="form-label">Role</label>
+            <select name="role" class="form-input" style="margin-bottom:16px;cursor:pointer;">
+                <option value="user">Analyst (user)</option>
+                <option value="admin">Administrator (admin)</option>
+            </select>
+            <button type="submit" class="btn-primary">Add User</button>
+        </form>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:10px;font-weight:500;">System Actions</div>
+            <button onclick="retrainModel()" id="retrain-btn" style="width:100%;padding:10px;border-radius:9px;font-size:12px;cursor:pointer;margin-bottom:8px;
+                background:rgba(30,90,122,0.15);border:1px solid rgba(30,90,122,0.25);
+                color:rgba(100,160,220,0.8);transition:all 0.2s;">
+                ↻ Retrain ML Model
+            </button>
+            <button onclick="runSimulation()" id="sim-btn2" style="width:100%;padding:10px;border-radius:9px;font-size:12px;cursor:pointer;
+                background:rgba(200,60,60,0.1);border:1px solid rgba(200,60,60,0.2);
+                color:rgba(220,80,80,0.7);transition:all 0.2s;">
+                ▶ Run Attack Simulation (All Targets)
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+async function retrainModel(){
+    const btn=document.getElementById('retrain-btn');
+    btn.textContent='⏳ Retraining...';btn.disabled=true;
+    try{
+        const res=await fetch('/api/retrain',{method:'POST'});
+        const data=await res.json();
+        btn.textContent=`✓ Done — F1: ${(data.f1*100).toFixed(1)}%`;
+        setTimeout(()=>{btn.textContent='↻ Retrain ML Model';btn.disabled=false;},4000);
+    }catch(e){btn.textContent='↻ Retrain ML Model';btn.disabled=false;}
+}
+
+async function runSimulation(){
+    const btn=document.getElementById('sim-btn2');
+    btn.textContent='⏳ Running...';btn.disabled=true;
+    try{
+        const res=await fetch('/api/run-attacks',{method:'POST'});
+        const data=await res.json();
+        btn.textContent=`✓ Done — ${data.indexed} logs indexed`;
+        setTimeout(()=>{btn.textContent='▶ Run Attack Simulation (All Targets)';btn.disabled=false;},3000);
+    }catch(e){btn.textContent='▶ Run Attack Simulation (All Targets)';btn.disabled=false;}
+}
+</script>
+{% endblock %}

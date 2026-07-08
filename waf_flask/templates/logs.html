@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}Attack Logs{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-title">Attack Logs</div>
+    <div class="page-subtitle">Full log history with filtering and export</div>
+</div>
+
+<!-- Filters -->
+<div class="glass-card" style="padding:18px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:12px;align-items:end;">
+        <div>
+            <label class="form-label">Target Website</label>
+            <select id="filter-target" class="form-input" style="cursor:pointer;background:#0d1929;color:white;">
+                <option value="" style="background:#0d1929;color:white;">All Targets</option>
+                <option value="VulnApp" style="background:#0d1929;color:white;">VulnApp</option>
+                <option value="DVWA" style="background:#0d1929;color:white;">DVWA</option>
+                <option value="WebGoat" style="background:#0d1929;color:white;">WebGoat</option>
+                <option value="Dashboard" style="background:#0d1929;color:white;">Dashboard</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label">Attack Type</label>
+            <select id="filter-type" class="form-input" style="cursor:pointer;background:#0d1929;color:white;">
+    <option value="">All Types</option>
+    <option value="SQL Injection">SQL Injection</option>
+    <option value="XSS">XSS</option>
+    <option value="LFI/Path Traversal">LFI/Path Traversal</option>
+    <option value="Command Injection">Command Injection</option>
+    <option value="Protocol Anomaly">Protocol Anomaly</option>
+    <option value="Anomaly Score">Anomaly Score</option>
+    <option value="HTTP Violation">HTTP Violation</option>
+    <option value="Other">Other</option>
+</select>
+        </div>
+        <div>
+            <label class="form-label">Rule ID</label>
+            <input type="text" id="filter-rule" class="form-input" placeholder="e.g. 942100">
+        </div>
+        <div>
+            <label class="form-label">Search Message</label>
+            <input type="text" id="filter-search" class="form-input" placeholder="Search...">
+        </div>
+        <div>
+            <label class="form-label">Results Per Page</label>
+            <select id="filter-size" class="form-input" style="cursor:pointer;">
+                <option value="20">20 rows</option>
+                <option value="50">50 rows</option>
+                <option value="100">100 rows</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button onclick="applyFilters()" class="btn-primary" style="padding:11px 18px;width:auto;white-space:nowrap;">
+                Filter
+            </button>
+            <button onclick="exportCSV()" style="padding:11px 18px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+                background:linear-gradient(135deg,rgba(74,180,100,0.15),rgba(74,180,100,0.08));
+                border:1px solid rgba(74,180,100,0.2);color:rgba(74,200,120,0.8);
+                box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+                ↓ CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Bar -->
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+    <div style="font-size:11px;color:rgba(255,255,255,0.35);">
+        Showing <span id="showing-count" style="color:rgba(255,255,255,0.7);font-weight:500;">—</span> of
+        <span id="total-count" style="color:rgba(255,255,255,0.7);font-weight:500;">—</span> records
+    </div>
+    <div style="flex:1;height:1px;background:rgba(255,255,255,0.05);"></div>
+    <button onclick="runAttacks()" id="sim-btn" style="font-size:11px;padding:6px 14px;border-radius:8px;cursor:pointer;
+        background:rgba(200,60,60,0.1);border:1px solid rgba(200,60,60,0.2);
+        color:rgba(220,80,80,0.8);transition:all 0.2s;">
+        ▶ Run Attack Simulation (All Targets)
+    </button>
+    <button onclick="parseLogs()" id="parse-btn" style="font-size:11px;padding:6px 14px;border-radius:8px;cursor:pointer;
+        background:rgba(30,90,122,0.15);border:1px solid rgba(30,90,122,0.25);
+        color:rgba(100,160,220,0.8);transition:all 0.2s;">
+        ↻ Parse New Logs
+    </button>
+</div>
+
+<!-- Table -->
+<div class="glass-card" style="padding:0;overflow:hidden;">
+    <div style="overflow-x:auto;">
+        <table class="data-table" style="min-width:700px;">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Target</th>
+                    <th>Attack Type</th>
+                    <th>Rule ID</th>
+                    <th>Severity</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody id="logs-table">
+                <tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.25);padding:30px;">Loading logs...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;" id="pagination"></div>
+
+<script>
+let allLogs=[];
+let currentPage=1;
+let pageSize=20;
+
+function getBadgeClass(type){
+    if(!type) return 'badge badge-other';
+    const t=type.toLowerCase();
+    if(t.includes('sql')) return 'badge badge-sql';
+    if(t.includes('xss')) return 'badge badge-xss';
+    if(t.includes('lfi')) return 'badge badge-lfi';
+    return 'badge badge-other';
+}
+
+function getSeverity(type){
+    if(!type) return ['Low','badge badge-low'];
+    const t=type.toLowerCase();
+    if(t.includes('sql')) return ['Critical','badge badge-critical'];
+    if(t.includes('xss')) return ['High','badge badge-high'];
+    if(t.includes('lfi')) return ['High','badge badge-high'];
+    return ['Low','badge badge-low'];
+}
+
+async function loadLogs(){
+    try{
+        const type=document.getElementById('filter-type').value;
+        const rule=document.getElementById('filter-rule').value;
+        const search=document.getElementById('filter-search').value;
+        const target=document.getElementById('filter-target').value;
+        pageSize=parseInt(document.getElementById('filter-size').value);
+
+        let url='/api/logs?size=500';
+        if(type) url+=`&attack_type=${encodeURIComponent(type)}`;
+        if(rule) url+=`&rule_id=${encodeURIComponent(rule)}`;
+        if(search) url+=`&search=${encodeURIComponent(search)}`;
+        if(target) url+=`&target=${encodeURIComponent(target)}`;
+
+        const res=await fetch(url);
+        const data=await res.json();
+        allLogs=data.hits||[];
+        document.getElementById('total-count').textContent=data.total?.toLocaleString()||'0';
+        currentPage=1;
+        renderTable();
+    }catch(e){console.error('Logs error:',e);}
+}
+
+function renderTable(){
+    const start=(currentPage-1)*pageSize;
+    const end=start+pageSize;
+    const pageLogs=allLogs.slice(start,end);
+
+    document.getElementById('showing-count').textContent=
+        `${Math.min(start+1,allLogs.length)}–${Math.min(end,allLogs.length)}`;
+
+    const tbody=document.getElementById('logs-table');
+    if(!pageLogs.length){
+        tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.25);padding:30px;">No logs found</td></tr>';
+        renderPagination();return;
+    }
+    tbody.innerHTML=pageLogs.map(h=>{
+        const time=h['@timestamp']?new Date(h['@timestamp']).toLocaleString():'—';
+        const type=h.attack_type||'Other';
+        const rule=h.rule_id||'—';
+        const msg=(h.message||'—').substring(0,60)+(h.message&&h.message.length>60?'...':'');
+        const [sev,sevClass]=getSeverity(type);
+        const target=h.target||'Unknown';
+        const targetColor=target==='VulnApp'?'rgba(100,160,220,0.8)':target==='DVWA'?'rgba(180,120,60,0.8)':target==='WebGoat'?'rgba(120,180,100,0.8)':'rgba(255,255,255,0.3)';
+        return `<tr>
+            <td style="color:rgba(255,255,255,0.35);font-size:11px;white-space:nowrap;">${time}</td>
+            <td style="font-size:11px;font-weight:500;color:${targetColor};">${target}</td>
+            <td><span class="${getBadgeClass(type)}">${type}</span></td>
+            <td style="color:rgba(255,255,255,0.45);font-family:monospace;font-size:11px;">${rule}</td>
+            <td><span class="${sevClass}">${sev}</span></td>
+            <td style="color:rgba(255,255,255,0.45);font-size:11px;" title="${h.message||''}">${msg}</td>
+        </tr>`;
+    }).join('');
+    renderPagination();
+}
+
+function renderPagination(){
+    const totalPages=Math.ceil(allLogs.length/pageSize);
+    const pg=document.getElementById('pagination');
+    if(totalPages<=1){pg.innerHTML='';return;}
+    let html='';
+    const btnStyle=`padding:6px 12px;border-radius:7px;font-size:11px;cursor:pointer;border:1px solid rgba(255,255,255,0.08);transition:all 0.2s;`;
+    const activeStyle=`background:rgba(30,90,122,0.3);color:white;`;
+    const inactiveStyle=`background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);`;
+    if(currentPage>1) html+=`<button style="${btnStyle}${inactiveStyle}" onclick="goPage(${currentPage-1})">← Prev</button>`;
+    const start=Math.max(1,currentPage-2);
+    const end=Math.min(totalPages,currentPage+2);
+    for(let i=start;i<=end;i++){
+        html+=`<button style="${btnStyle}${i===currentPage?activeStyle:inactiveStyle}" onclick="goPage(${i})">${i}</button>`;
+    }
+    if(currentPage<totalPages) html+=`<button style="${btnStyle}${inactiveStyle}" onclick="goPage(${currentPage+1})">Next →</button>`;
+    pg.innerHTML=html;
+}
+
+function goPage(p){currentPage=p;renderTable();window.scrollTo(0,0);}
+
+function applyFilters(){currentPage=1;loadLogs();}
+
+function exportCSV(){
+    if(!allLogs.length) return;
+    const headers=['Timestamp','Target','Attack Type','Rule ID','Severity','Message'];
+    const rows=allLogs.map(h=>{
+        const type=h.attack_type||'Other';
+        const sev=type.toLowerCase().includes('sql')?'Critical':type.toLowerCase().includes('xss')||type.toLowerCase().includes('lfi')?'High':'Low';
+        return [
+            h['@timestamp']||'',
+            type,
+            h.rule_id||'',
+            sev,
+            (h.message||'').replace(/,/g,';')
+        ].join(',');
+    });
+    const csv=[headers.join(','),...rows].join('\n');
+    const blob=new Blob([csv],{type:'text/csv'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`sentinel_logs_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+}
+
+async function runAttacks(){
+    const btn=document.getElementById('sim-btn');
+    btn.textContent='⏳ Running...';btn.disabled=true;
+    try{
+        const res=await fetch('/api/run-attacks',{method:'POST'});
+        const data=await res.json();
+        btn.textContent=`✓ Done — ${data.indexed} logs indexed`;
+        setTimeout(()=>{btn.textContent='▶ Run Attack Simulation (All Targets)';btn.disabled=false;loadLogs();},3000);
+    }catch(e){btn.textContent='▶ Run Attack Simulation (All Targets)';btn.disabled=false;}
+}
+
+async function parseLogs(){
+    const btn=document.getElementById('parse-btn');
+    btn.textContent='⏳ Parsing...';btn.disabled=true;
+    try{
+        const res=await fetch('/api/parse-logs',{method:'POST'});
+        const data=await res.json();
+        btn.textContent=`✓ Done — ${data.indexed} logs indexed`;
+        setTimeout(()=>{btn.textContent='↻ Parse New Logs';btn.disabled=false;loadLogs();},3000);
+    }catch(e){btn.textContent='↻ Parse New Logs';btn.disabled=false;}
+}
+
+loadLogs();
+</script>
+{% endblock %}

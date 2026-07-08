@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-title">Security Dashboard</div>
+    <div class="page-subtitle">Real-time WAF monitoring and attack analytics</div>
+</div>
+
+<!-- Stat Cards -->
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:16px;">
+    <div class="stat-card">
+        <div class="stat-label">Total Detections</div>
+        <div class="stat-value" id="total-attacks" style="color:rgba(100,160,220,0.9);">—</div>
+        <div class="stat-sub">ModSecurity rule triggers</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">SQL Injection</div>
+        <div class="stat-value" id="sql-count" style="color:rgba(200,100,100,0.9);">—</div>
+        <div class="stat-sub">Rule 942xxx triggered</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">XSS Attacks</div>
+        <div class="stat-value" id="xss-count" style="color:rgba(180,110,60,0.9);">—</div>
+        <div class="stat-sub">Rule 941xxx triggered</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">LFI / Path</div>
+        <div class="stat-value" id="lfi-count" style="color:rgba(160,140,60,0.9);">—</div>
+        <div class="stat-sub">Rule 930xxx triggered</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Command Injection</div>
+        <div class="stat-value" id="cmd-count" style="color:rgba(120,100,180,0.9);">—</div>
+        <div class="stat-sub">Rule 932xxx triggered</div>
+    </div>
+</div>
+
+<!-- Website Stats Row -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px;">
+    <!-- VulnApp -->
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);">🎯 VulnApp</div>
+            <span id="vulnapp-risk-badge" class="badge">—</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:white;margin-bottom:8px;" id="vulnapp-total">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:10px;">Total Detections</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+            <div style="background:rgba(200,80,80,0.1);border:1px solid rgba(200,80,80,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(200,100,100,0.9);" id="vulnapp-sql">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">SQLi</div>
+            </div>
+            <div style="background:rgba(180,100,40,0.1);border:1px solid rgba(180,100,40,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(180,120,60,0.9);" id="vulnapp-xss">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">XSS</div>
+            </div>
+            <div style="background:rgba(150,130,40,0.1);border:1px solid rgba(150,130,40,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(160,140,60,0.9);" id="vulnapp-lfi">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">LFI</div>
+            </div>
+            <div style="background:rgba(120,80,160,0.1);border:1px solid rgba(120,80,160,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(140,100,200,0.9);" id="vulnapp-cmd">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">CMD</div>
+            </div>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">Risk Level</div>
+        <div style="width:100%;height:6px;border-radius:6px;background:rgba(255,255,255,0.06);margin-bottom:4px;">
+            <div id="vulnapp-risk-bar" style="height:100%;border-radius:6px;width:0%;background:rgba(200,80,80,0.7);transition:width 0.5s;"></div>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);" id="vulnapp-risk-pct">0%</div>
+        <button id="vulnapp-toggle-btn" onclick="toggleSiteDetails('vulnapp')"
+            style="margin-top:10px;width:100%;padding:5px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);
+            background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:10px;cursor:pointer;">
+            ▼ View Details
+        </button>
+        <div id="vulnapp-details" style="display:none;margin-top:10px;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;">Attack Breakdown</div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(200,100,100,0.8);margin-bottom:2px;">
+                    <span>SQL Injection</span><span id="vulnapp-bar-sql-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="vulnapp-bar-sql" style="height:100%;width:0%;background:rgba(200,80,80,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(180,120,60,0.8);margin-bottom:2px;">
+                    <span>XSS</span><span id="vulnapp-bar-xss-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="vulnapp-bar-xss" style="height:100%;width:0%;background:rgba(180,120,60,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(160,140,60,0.8);margin-bottom:2px;">
+                    <span>LFI/Path</span><span id="vulnapp-bar-lfi-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="vulnapp-bar-lfi" style="height:100%;width:0%;background:rgba(160,140,60,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(140,100,200,0.8);margin-bottom:2px;">
+                    <span>Command Injection</span><span id="vulnapp-bar-cmd-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="vulnapp-bar-cmd" style="height:100%;width:0%;background:rgba(140,100,200,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DVWA -->
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);">🔓 DVWA</div>
+            <span id="dvwa-risk-badge" class="badge">—</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:white;margin-bottom:8px;" id="dvwa-total">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:10px;">Total Detections</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+            <div style="background:rgba(200,80,80,0.1);border:1px solid rgba(200,80,80,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(200,100,100,0.9);" id="dvwa-sql">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">SQLi</div>
+            </div>
+            <div style="background:rgba(180,100,40,0.1);border:1px solid rgba(180,100,40,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(180,120,60,0.9);" id="dvwa-xss">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">XSS</div>
+            </div>
+            <div style="background:rgba(150,130,40,0.1);border:1px solid rgba(150,130,40,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(160,140,60,0.9);" id="dvwa-lfi">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">LFI</div>
+            </div>
+            <div style="background:rgba(120,80,160,0.1);border:1px solid rgba(120,80,160,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(140,100,200,0.9);" id="dvwa-cmd">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">CMD</div>
+            </div>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">Risk Level</div>
+        <div style="width:100%;height:6px;border-radius:6px;background:rgba(255,255,255,0.06);margin-bottom:4px;">
+            <div id="dvwa-risk-bar" style="height:100%;border-radius:6px;width:0%;background:rgba(180,130,50,0.7);transition:width 0.5s;"></div>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);" id="dvwa-risk-pct">0%</div>
+        <button id="dvwa-toggle-btn" onclick="toggleSiteDetails('dvwa')"
+            style="margin-top:10px;width:100%;padding:5px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);
+            background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:10px;cursor:pointer;">
+            ▼ View Details
+        </button>
+        <div id="dvwa-details" style="display:none;margin-top:10px;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;">Attack Breakdown</div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(200,100,100,0.8);margin-bottom:2px;">
+                    <span>SQL Injection</span><span id="dvwa-bar-sql-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="dvwa-bar-sql" style="height:100%;width:0%;background:rgba(200,80,80,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(180,120,60,0.8);margin-bottom:2px;">
+                    <span>XSS</span><span id="dvwa-bar-xss-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="dvwa-bar-xss" style="height:100%;width:0%;background:rgba(180,120,60,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(160,140,60,0.8);margin-bottom:2px;">
+                    <span>LFI/Path</span><span id="dvwa-bar-lfi-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="dvwa-bar-lfi" style="height:100%;width:0%;background:rgba(160,140,60,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(140,100,200,0.8);margin-bottom:2px;">
+                    <span>Command Injection</span><span id="dvwa-bar-cmd-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="dvwa-bar-cmd" style="height:100%;width:0%;background:rgba(140,100,200,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WebGoat -->
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);">🐐 WebGoat</div>
+            <span id="webgoat-risk-badge" class="badge">—</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:white;margin-bottom:8px;" id="webgoat-total">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:10px;">Total Detections</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;">
+            <div style="background:rgba(200,80,80,0.1);border:1px solid rgba(200,80,80,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(200,100,100,0.9);" id="webgoat-sql">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">SQLi</div>
+            </div>
+            <div style="background:rgba(180,100,40,0.1);border:1px solid rgba(180,100,40,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(180,120,60,0.9);" id="webgoat-xss">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">XSS</div>
+            </div>
+            <div style="background:rgba(150,130,40,0.1);border:1px solid rgba(150,130,40,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(160,140,60,0.9);" id="webgoat-lfi">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">LFI</div>
+            </div>
+            <div style="background:rgba(120,80,160,0.1);border:1px solid rgba(120,80,160,0.2);border-radius:8px;padding:8px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:rgba(140,100,200,0.9);" id="webgoat-cmd">—</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.3);">CMD</div>
+            </div>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:4px;">Risk Level</div>
+        <div style="width:100%;height:6px;border-radius:6px;background:rgba(255,255,255,0.06);margin-bottom:4px;">
+            <div id="webgoat-risk-bar" style="height:100%;border-radius:6px;width:0%;background:rgba(74,180,100,0.7);transition:width 0.5s;"></div>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);" id="webgoat-risk-pct">0%</div>
+        <button id="webgoat-toggle-btn" onclick="toggleSiteDetails('webgoat')"
+            style="margin-top:10px;width:100%;padding:5px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);
+            background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);font-size:10px;cursor:pointer;">
+            ▼ View Details
+        </button>
+        <div id="webgoat-details" style="display:none;margin-top:10px;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;">Attack Breakdown</div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(200,100,100,0.8);margin-bottom:2px;">
+                    <span>SQL Injection</span><span id="webgoat-bar-sql-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="webgoat-bar-sql" style="height:100%;width:0%;background:rgba(200,80,80,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(180,120,60,0.8);margin-bottom:2px;">
+                    <span>XSS</span><span id="webgoat-bar-xss-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="webgoat-bar-xss" style="height:100%;width:0%;background:rgba(180,120,60,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(160,140,60,0.8);margin-bottom:2px;">
+                    <span>LFI/Path</span><span id="webgoat-bar-lfi-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="webgoat-bar-lfi" style="height:100%;width:0%;background:rgba(160,140,60,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+            <div style="margin-bottom:4px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(140,100,200,0.8);margin-bottom:2px;">
+                    <span>Command Injection</span><span id="webgoat-bar-cmd-val">0</span>
+                </div>
+                <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:4px;">
+                    <div id="webgoat-bar-cmd" style="height:100%;width:0%;background:rgba(140,100,200,0.7);border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px;">
+    <div class="glass-card" style="padding:20px;">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);">Attacks Over Time</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:3px;">
+            <button id="btn-hour" onclick="setTimeRange('hour')"
+                style="font-size:10px;padding:3px 10px;border-radius:6px;border:none;cursor:pointer;
+                background:rgba(255,255,255,0.12);color:white;font-weight:500;">
+                Hour
+            </button>
+            <button id="btn-day" onclick="setTimeRange('day')"
+                style="font-size:10px;padding:3px 10px;border-radius:6px;border:none;cursor:pointer;
+                background:transparent;color:rgba(255,255,255,0.35);">
+                Day
+            </button>
+            <button id="btn-week" onclick="setTimeRange('week')"
+                style="font-size:10px;padding:3px 10px;border-radius:6px;border:none;cursor:pointer;
+                background:transparent;color:rgba(255,255,255,0.35);">
+                Week
+            </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;"></div>
+            <span style="font-size:10px;color:rgba(255,255,255,0.3);">Live</span>
+        </div>
+    </div>
+</div>
+<div style="font-size:10px;color:rgba(255,255,255,0.28);margin-bottom:14px;" id="time-subtitle">Hourly attack frequency</div>
+        <canvas id="timeChart" height="90"></canvas>
+    </div>
+    <div class="glass-card" style="padding:20px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:4px;">Attack Types</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.28);margin-bottom:14px;">Distribution breakdown</div>
+        <canvas id="typeChart" height="140"></canvas>
+    </div>
+</div>
+
+<!-- Bottom Row -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="glass-card" style="padding:20px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:14px;">Top Triggered Rules</div>
+        <canvas id="rulesChart" height="130"></canvas>
+    </div>
+    <div class="glass-card" style="padding:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);">Recent Attacks</div>
+            <span style="font-size:10px;color:rgba(255,255,255,0.25);">Last 10 events</span>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>Rule</th>
+                    <th>Severity</th>
+                </tr>
+            </thead>
+            <tbody id="recent-table">
+                <tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.25);padding:20px;">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let timeChart, typeChart, rulesChart;
+let currentInterval = 'hour';
+
+function toggleSiteDetails(site){
+    const details = document.getElementById(site+'-details');
+    const btn = document.getElementById(site+'-toggle-btn');
+    if(details.style.display === 'none'){
+        details.style.display = 'block';
+        btn.textContent = '▲ Hide Details';
+    } else {
+        details.style.display = 'none';
+        btn.textContent = '▼ View Details';
+    }
+}
+function setTimeRange(interval){
+    currentInterval = interval;
+    const subtitles = {
+        'hour': 'Hourly attack frequency',
+        'day': 'Daily attack frequency',
+        'week': 'Weekly attack frequency'
+    };
+    document.getElementById('time-subtitle').textContent = subtitles[interval];
+    ['hour','day','week'].forEach(i=>{
+        const btn = document.getElementById('btn-'+i);
+        if(i === interval){
+            btn.style.background = 'rgba(255,255,255,0.12)';
+            btn.style.color = 'white';
+            btn.style.fontWeight = '500';
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color = 'rgba(255,255,255,0.35)';
+            btn.style.fontWeight = '400';
+        }
+    });
+    loadStats();
+}
+
+function getBadgeClass(type){
+    if(!type) return 'badge badge-other';
+    const t=type.toLowerCase();
+    if(t.includes('sql')) return 'badge badge-sql';
+    if(t.includes('xss')) return 'badge badge-xss';
+    if(t.includes('lfi')) return 'badge badge-lfi';
+    return 'badge badge-other';
+}
+
+function getSeverity(type){
+    if(!type) return ['Low','badge badge-low'];
+    const t=type.toLowerCase();
+    if(t.includes('sql')) return ['Critical','badge badge-critical'];
+    if(t.includes('xss')) return ['High','badge badge-high'];
+    if(t.includes('lfi')) return ['High','badge badge-high'];
+    if(t.includes('command')) return ['High','badge badge-high'];
+    if(t.includes('rfi')) return ['High','badge badge-high'];
+    if(t.includes('php')) return ['High','badge badge-high'];
+    if(t.includes('anomaly') || t.includes('protocol') || t.includes('http violation')) return ['Medium','badge badge-medium'];
+    if(t.includes('scanner')) return ['Medium','badge badge-medium'];
+    return ['Low','badge badge-low'];
+}
+const chartDefaults={
+    plugins:{legend:{labels:{color:'rgba(255,255,255,0.45)',font:{size:10},padding:12}}},
+    scales:{
+        x:{ticks:{color:'rgba(255,255,255,0.3)',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'rgba(255,255,255,0.3)',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}
+    }
+};
+
+async function loadStats(){
+    try{
+        const res=await fetch('/api/stats?interval='+currentInterval);
+        const data=await res.json();
+        if(data.error) throw new Error();
+
+        document.getElementById('total-attacks').textContent=data.total.toLocaleString();
+
+        // Website stats
+        if(data.website_stats){
+            ['vulnapp','dvwa','webgoat'].forEach(site=>{
+                const key = site === 'vulnapp' ? 'VulnApp' : site === 'dvwa' ? 'DVWA' : 'WebGoat';
+                const ws = data.website_stats[key];
+                if(!ws) return;
+
+                document.getElementById(site+'-total').textContent = ws.total.toLocaleString();
+                document.getElementById(site+'-sql').textContent = ws.sql.toLocaleString();
+                document.getElementById(site+'-xss').textContent = ws.xss.toLocaleString();
+                document.getElementById(site+'-lfi').textContent = ws.lfi.toLocaleString();
+                document.getElementById(site+'-cmd').textContent = ws.cmd.toLocaleString();
+                document.getElementById(site+'-risk-pct').textContent = ws.risk_score + '%';
+                document.getElementById(site+'-risk-bar').style.width = ws.risk_score + '%';
+
+                const badge = document.getElementById(site+'-risk-badge');
+                if(ws.risk_level === 'HIGH'){
+                    badge.textContent = '🔴 HIGH';
+                    badge.className = 'badge badge-critical';
+                    document.getElementById(site+'-risk-bar').style.background = 'rgba(200,80,80,0.7)';
+                } else if(ws.risk_level === 'MEDIUM'){
+                    badge.textContent = '🟡 MEDIUM';
+                    badge.className = 'badge badge-high';
+                    document.getElementById(site+'-risk-bar').style.background = 'rgba(180,130,50,0.7)';
+                } else {
+                    badge.textContent = '🟢 LOW';
+                    badge.className = 'badge badge-low';
+                    document.getElementById(site+'-risk-bar').style.background = 'rgba(74,180,100,0.7)';
+                }
+
+                // Update bar chart
+                const maxVal = Math.max(ws.sql, ws.xss, ws.lfi, ws.cmd, 1);
+                ['sql','xss','lfi','cmd'].forEach(type => {
+                    const bar = document.getElementById(site+'-bar-'+type);
+                    const valEl = document.getElementById(site+'-bar-'+type+'-val');
+                    const val = ws[type];
+                    if(bar) bar.style.width = Math.round((val/maxVal)*100)+'%';
+                    if(valEl) valEl.textContent = val.toLocaleString();
+                });
+            });
+        }
+        const types=data.attack_types;
+        const sql=types.find(t=>t.key==='SQL Injection');
+        const xss=types.find(t=>t.key==='XSS');
+        const lfi=types.find(t=>t.key&&t.key.includes('LFI'));
+        const cmd=types.find(t=>t.key==='Command Injection');
+        document.getElementById('sql-count').textContent=sql?sql.doc_count.toLocaleString():'0';
+        document.getElementById('xss-count').textContent=xss?xss.doc_count.toLocaleString():'0';
+        document.getElementById('lfi-count').textContent=lfi?lfi.doc_count.toLocaleString():'0';
+        document.getElementById('cmd-count').textContent=cmd?cmd.doc_count.toLocaleString():'0';
+
+        const limit = currentInterval==='hour'?24:currentInterval==='day'?30:12;
+        const timeData = data.over_time.slice(-limit);
+
+        const timeLabels=timeData.map(b=>{
+            const d=new Date(b.key_as_string);
+            if(currentInterval==='hour') return d.getHours()+':00';
+            if(currentInterval==='day') return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+            return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+        });
+        const timeCounts=timeData.map(b=>b.doc_count);
+
+        if(timeChart) timeChart.destroy();
+        const chartType=timeCounts.filter(v=>v>0).length<=1?'bar':'line';
+        timeChart=new Chart(document.getElementById('timeChart'),{
+            type:chartType,
+            data:{labels:timeLabels,datasets:[{
+                label:'Attacks',
+                data:timeCounts,
+                borderColor:'rgba(255,255,255,0.5)',
+                backgroundColor:chartType==='bar'?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.04)',
+                fill:chartType==='line',
+                tension:0.4,
+                pointRadius:2,
+                pointBackgroundColor:'rgba(255,255,255,0.6)',
+                borderWidth:1.5,
+                borderRadius:chartType==='bar'?4:0
+            }]},
+            options:{...chartDefaults,plugins:{legend:{display:false}}}
+        });
+
+        const typeLabels=types.map(t=>t.key);
+        const typeCounts=types.map(t=>t.doc_count);
+        const typeColors=[
+            'rgba(200,80,80,0.7)','rgba(180,100,40,0.7)',
+            'rgba(150,130,40,0.7)','rgba(80,120,160,0.6)',
+            'rgba(100,100,140,0.5)','rgba(120,80,160,0.5)',
+            'rgba(60,130,120,0.5)','rgba(100,100,100,0.4)'
+        ];
+        if(typeChart) typeChart.destroy();
+        typeChart=new Chart(document.getElementById('typeChart'),{
+            type:'doughnut',
+            data:{labels:typeLabels,datasets:[{
+                data:typeCounts,
+                backgroundColor:typeColors,
+                borderWidth:0,
+                hoverOffset:4
+            }]},
+            options:{
+                plugins:{legend:{
+                    position:'bottom',
+                    labels:{color:'rgba(255,255,255,0.4)',font:{size:10},padding:10}
+                }},
+                cutout:'65%'
+            }
+        });
+
+        const ruleLabels=data.top_rules.map(r=>'Rule '+r.key);
+        const ruleCounts=data.top_rules.map(r=>r.doc_count);
+        if(rulesChart) rulesChart.destroy();
+        rulesChart=new Chart(document.getElementById('rulesChart'),{
+            type:'bar',
+            data:{labels:ruleLabels,datasets:[{
+                label:'Triggers',
+                data:ruleCounts,
+                backgroundColor:'rgba(255,255,255,0.08)',
+                borderColor:'rgba(255,255,255,0.2)',
+                borderWidth:1,
+                borderRadius:5
+            }]},
+            options:{...chartDefaults,plugins:{legend:{display:false}}}
+        });
+    }catch(e){console.error('Stats error:',e);}
+}
+
+async function loadRecent(){
+    try{
+        const res=await fetch('/api/recent');
+        const hits=await res.json();
+        const tbody=document.getElementById('recent-table');
+        if(!hits.length){
+            tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.25);padding:20px;">No data</td></tr>';
+            return;
+        }
+        tbody.innerHTML=hits.map(h=>{
+            const time=h['@timestamp']?new Date(h['@timestamp']).toLocaleTimeString():'—';
+            const type=h.attack_type||'Other';
+            const rule=h.rule_id||'—';
+            const [sev,sevClass]=getSeverity(type);
+            return `<tr>
+                <td style="color:rgba(255,255,255,0.3);font-size:11px;">${time}</td>
+                <td><span class="${getBadgeClass(type)}">${type}</span></td>
+                <td style="color:rgba(255,255,255,0.4);font-family:monospace;font-size:11px;">${rule}</td>
+                <td><span class="${sevClass}">${sev}</span></td>
+            </tr>`;
+        }).join('');
+    }catch(e){console.error('Recent error:',e);}
+}
+
+loadStats();loadRecent();
+setIntervalTimer=window.setInterval(()=>{loadStats();loadRecent();},10000);
+</script>
+{% endblock %}

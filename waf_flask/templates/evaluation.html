@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% block title %}Evaluation{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-title">Model Evaluation</div>
+    <div class="page-subtitle">Random Forest performance metrics and confusion matrix</div>
+</div>
+
+<!-- Metric Cards -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;">
+    <div class="stat-card" style="text-align:center;">
+        <div style="font-size:22px;margin-bottom:6px;">🎯</div>
+        <div class="stat-value" id="accuracy" style="font-size:28px;">—</div>
+        <div class="stat-label" style="margin-top:4px;">Accuracy</div>
+        <div class="stat-sub">Overall correctness</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+        <div style="font-size:22px;margin-bottom:6px;">🔬</div>
+        <div class="stat-value" id="precision" style="font-size:28px;color:rgba(74,180,100,0.9);">—</div>
+        <div class="stat-label" style="margin-top:4px;">Precision</div>
+        <div class="stat-sub">Low false positives</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+        <div style="font-size:22px;margin-bottom:6px;">📡</div>
+        <div class="stat-value" id="recall" style="font-size:28px;color:rgba(180,130,60,0.9);">—</div>
+        <div class="stat-label" style="margin-top:4px;">Recall</div>
+        <div class="stat-sub">Attack detection rate</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+        <div style="font-size:22px;margin-bottom:6px;">⚖️</div>
+        <div class="stat-value" id="f1score" style="font-size:28px;color:rgba(120,160,200,0.9);">—</div>
+        <div class="stat-label" style="margin-top:4px;">F1-Score</div>
+        <div class="stat-sub">Precision-Recall balance</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+    <!-- Confusion Matrix -->
+    <div class="glass-card" style="padding:24px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:4px;">Confusion Matrix</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.28);margin-bottom:20px;">Prediction results on test set (25% holdout)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:320px;margin:0 auto;">
+            <div style="padding:18px;border-radius:12px;text-align:center;background:rgba(74,180,100,0.08);border:1px solid rgba(74,180,100,0.18);">
+                <div style="font-size:26px;font-weight:700;color:rgba(74,200,120,0.9);" id="tp">—</div>
+                <div style="font-size:10px;color:rgba(74,200,120,0.6);margin-top:4px;">True Positive</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:2px;">Correctly detected attacks</div>
+            </div>
+            <div style="padding:18px;border-radius:12px;text-align:center;background:rgba(180,100,40,0.08);border:1px solid rgba(180,100,40,0.18);">
+                <div style="font-size:26px;font-weight:700;color:rgba(200,130,60,0.9);" id="fp">—</div>
+                <div style="font-size:10px;color:rgba(200,130,60,0.6);margin-top:4px;">False Positive</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:2px;">Benign flagged as attack</div>
+            </div>
+            <div style="padding:18px;border-radius:12px;text-align:center;background:rgba(200,60,60,0.08);border:1px solid rgba(200,60,60,0.18);">
+                <div style="font-size:26px;font-weight:700;color:rgba(220,80,80,0.9);" id="fn">—</div>
+                <div style="font-size:10px;color:rgba(220,80,80,0.6);margin-top:4px;">False Negative</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:2px;">Missed attacks</div>
+            </div>
+            <div style="padding:18px;border-radius:12px;text-align:center;background:rgba(80,120,180,0.08);border:1px solid rgba(80,120,180,0.18);">
+                <div style="font-size:26px;font-weight:700;color:rgba(100,150,220,0.9);" id="tn">—</div>
+                <div style="font-size:10px;color:rgba(100,150,220,0.6);margin-top:4px;">True Negative</div>
+                <div style="font-size:9px;color:rgba(255,255,255,0.25);margin-top:2px;">Correctly passed benign</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Importance -->
+    <div class="glass-card" style="padding:24px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:4px;">Feature Importance</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.28);margin-bottom:14px;">Which features contribute most to detection</div>
+        <canvas id="featureChart" height="180"></canvas>
+    </div>
+</div>
+
+<!-- Classification Report + Export -->
+<div class="glass-card" style="padding:24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);">Classification Report</div>
+        <button onclick="exportPDF()" style="font-size:11px;padding:7px 16px;border-radius:8px;cursor:pointer;
+            background:linear-gradient(135deg,rgba(30,90,122,0.3),rgba(26,58,92,0.2));
+            border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);
+            box-shadow:0 2px 8px rgba(0,0,0,0.2);transition:all 0.2s;">
+            ↓ Export PDF
+        </button>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Class</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1-Score</th>
+                <th>Support</th>
+            </tr>
+        </thead>
+        <tbody id="report-table">
+            <tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.25);padding:20px;">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Website Risk Summary -->
+<div class="glass-card" style="padding:24px;margin-top:16px;margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:4px;">
+        🌐 Per-Website Risk Evaluation Summary
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:16px;">
+        Attack detection breakdown and risk assessment per monitored website
+    </div>
+    <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                    <th style="padding:10px 14px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);font-weight:500;white-space:nowrap;">Website</th>
+                    <th style="padding:10px 14px;text-align:right;font-size:11px;color:rgba(255,255,255,0.4);font-weight:500;white-space:nowrap;">Total</th>
+                    <th style="padding:10px 14px;text-align:right;font-size:11px;color:rgba(200,100,100,0.7);font-weight:500;white-space:nowrap;">SQLi</th>
+                    <th style="padding:10px 14px;text-align:right;font-size:11px;color:rgba(180,120,60,0.7);font-weight:500;white-space:nowrap;">XSS</th>
+                    <th style="padding:10px 14px;text-align:right;font-size:11px;color:rgba(160,140,60,0.7);font-weight:500;white-space:nowrap;">LFI</th>
+                    <th style="padding:10px 14px;text-align:right;font-size:11px;color:rgba(140,100,200,0.7);font-weight:500;white-space:nowrap;">CMD</th>
+                    <th style="padding:10px 14px;text-align:center;font-size:11px;color:rgba(255,255,255,0.4);font-weight:500;white-space:nowrap;">Risk Level</th>
+                    <th style="padding:10px 14px;text-align:right;font-size:11px;color:rgba(255,255,255,0.4);font-weight:500;white-space:nowrap;">Risk Score</th>
+                </tr>
+            </thead>
+            <tbody id="website-risk-table">
+                <tr><td colspan="8" style="text-align:center;color:rgba(255,255,255,0.25);padding:20px;">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+async function loadEvaluation(){
+    try{
+        const res=await fetch('/api/evaluation');
+        const data=await res.json();
+        if(data.error) throw new Error(data.error);
+
+        document.getElementById('accuracy').textContent=(data.accuracy*100).toFixed(1)+'%';
+        document.getElementById('precision').textContent=(data.precision*100).toFixed(1)+'%';
+        document.getElementById('recall').textContent=(data.recall*100).toFixed(1)+'%';
+        document.getElementById('f1score').textContent=(data.f1*100).toFixed(1)+'%';
+        document.getElementById('tp').textContent=data.tp.toLocaleString();
+        document.getElementById('fp').textContent=data.fp.toLocaleString();
+        document.getElementById('fn').textContent=data.fn.toLocaleString();
+        document.getElementById('tn').textContent=data.tn.toLocaleString();
+
+        const features=['Text Length','Special Chars','Digits','Quotes','Equals','SQL','XSS','LFI','CMD'];
+        const fColors=features.map((_,i)=>i>=5?['rgba(200,80,80,0.7)','rgba(180,100,40,0.7)','rgba(150,130,40,0.7)','rgba(120,100,160,0.7)'][i-5]:'rgba(255,255,255,0.2)');
+        new Chart(document.getElementById('featureChart'),{
+            type:'bar',
+            data:{labels:features,datasets:[{data:data.feature_importance,backgroundColor:fColors,borderWidth:0,borderRadius:4}]},
+            options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{
+                x:{ticks:{color:'rgba(255,255,255,0.3)',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+                y:{ticks:{color:'rgba(255,255,255,0.5)',font:{size:10}},grid:{display:false}}}}
+        });
+
+        document.getElementById('report-table').innerHTML=data.report.map(r=>`
+            <tr>
+                <td><span class="badge ${r.class==='Malicious'?'badge-sql':'badge-other'}">${r.class}</span></td>
+                <td style="color:rgba(74,200,120,0.8);font-weight:500;">${(r.precision*100).toFixed(1)}%</td>
+                <td style="color:rgba(180,130,60,0.8);font-weight:500;">${(r.recall*100).toFixed(1)}%</td>
+                <td style="color:rgba(100,150,220,0.8);font-weight:500;">${(r.f1*100).toFixed(1)}%</td>
+                <td style="color:rgba(255,255,255,0.5);">${r.support.toLocaleString()}</td>
+            </tr>`).join('');
+    }catch(e){console.error('Eval error:',e);}
+}
+
+function exportPDF(){
+    const acc=document.getElementById('accuracy').textContent;
+    const prec=document.getElementById('precision').textContent;
+    const rec=document.getElementById('recall').textContent;
+    const f1=document.getElementById('f1score').textContent;
+    const tp=document.getElementById('tp').textContent;
+    const fp=document.getElementById('fp').textContent;
+    const fn=document.getElementById('fn').textContent;
+    const tn=document.getElementById('tn').textContent;
+    const w=window.open('','_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>SENTINEL Evaluation Report</title>
+    <style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;color:#1a1a2e;}
+    h1{color:#1a3a5c;border-bottom:2px solid #1a3a5c;padding-bottom:10px;}
+    h2{color:#1e5a7a;margin-top:30px;}
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:20px 0;}
+    .metric{background:#f0f4f8;border-radius:8px;padding:16px;text-align:center;}
+    .metric-val{font-size:28px;font-weight:700;color:#1a3a5c;}
+    .metric-lbl{font-size:11px;color:#666;margin-top:4px;}
+    .cm{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:300px;margin:20px 0;}
+    .cm-cell{padding:16px;border-radius:8px;text-align:center;}
+    table{width:100%;border-collapse:collapse;margin-top:16px;}
+    th{background:#1a3a5c;color:white;padding:10px 14px;text-align:left;font-size:12px;}
+    td{padding:10px 14px;border-bottom:1px solid #e0e0e0;font-size:13px;}
+    .footer{margin-top:40px;font-size:11px;color:#888;border-top:1px solid #eee;padding-top:16px;}
+    </style></head><body>
+    <h1>SENTINEL WAFShield AI — Evaluation Report</h1>
+    <p style="color:#666;font-size:13px;">Generated: ${new Date().toLocaleString()} | Random Forest Classifier</p>
+    <h2>Performance Metrics</h2>
+    <div class="grid">
+        <div class="metric"><div class="metric-val">${acc}</div><div class="metric-lbl">Accuracy</div></div>
+        <div class="metric"><div class="metric-val">${prec}</div><div class="metric-lbl">Precision</div></div>
+        <div class="metric"><div class="metric-val">${rec}</div><div class="metric-lbl">Recall</div></div>
+        <div class="metric"><div class="metric-val">${f1}</div><div class="metric-lbl">F1-Score</div></div>
+    </div>
+    <h2>Confusion Matrix</h2>
+    <div class="cm">
+        <div class="cm-cell" style="background:#e8f5e9;"><strong style="font-size:22px;color:#2e7d32;">${tp}</strong><br><small>True Positive</small></div>
+        <div class="cm-cell" style="background:#fff3e0;"><strong style="font-size:22px;color:#e65100;">${fp}</strong><br><small>False Positive</small></div>
+        <div class="cm-cell" style="background:#ffebee;"><strong style="font-size:22px;color:#c62828;">${fn}</strong><br><small>False Negative</small></div>
+        <div class="cm-cell" style="background:#e3f2fd;"><strong style="font-size:22px;color:#1565c0;">${tn}</strong><br><small>True Negative</small></div>
+    </div>
+    <h2>Classification Report</h2>
+    <table><thead><tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1-Score</th><th>Support</th></tr></thead>
+    <tbody id="pdf-report"></tbody></table>
+    <h2>Per-Website Risk Evaluation Summary</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Website</th>
+                <th>Total</th>
+                <th>SQLi</th>
+                <th>XSS</th>
+                <th>LFI</th>
+                <th>CMD</th>
+                <th>Risk Level</th>
+                <th>Risk Score</th>
+            </tr>
+        </thead>
+        <tbody id="pdf-website-risk"></tbody>
+    </table>
+    <div class="footer">SENTINEL WAFShield AI · FYP 2026 · Amelia Sabrina · UiTM Computer Networks</div>
+    </body></html>`);
+    // Populate classification report in PDF
+    const reportTable = w.document.getElementById('pdf-report');
+    const reportData = document.getElementById('report-table');
+    if(reportTable && reportData){
+        reportTable.innerHTML = reportData.innerHTML;
+    }
+
+    // Populate website risk table in PDF
+    const wsTable = w.document.getElementById('pdf-website-risk');
+    const wsData = document.getElementById('website-risk-table');
+    if(wsTable && wsData){
+        wsTable.innerHTML = Array.from(wsData.querySelectorAll('tr')).map(row => {
+            const cells = Array.from(row.querySelectorAll('td'));
+            return '<tr>' + cells.map(cell => '<td>' + cell.textContent.trim() + '</td>').join('') + '</tr>';
+        }).join('');
+    }
+    w.document.close();
+    setTimeout(()=>w.print(),500);
+}
+
+loadEvaluation();
+
+async function loadWebsiteRisk(){
+    try{
+        const res = await fetch('/api/stats');
+        const data = await res.json();
+        if(!data.website_stats) return;
+        
+        const tbody = document.getElementById('website-risk-table');
+        if(!tbody) return;
+        
+        const sites = ['VulnApp', 'DVWA', 'WebGoat'];
+        const icons = {'VulnApp':'🎯', 'DVWA':'🔓', 'WebGoat':'🐐'};
+        
+        tbody.innerHTML = sites.map(site => {
+            const ws = data.website_stats[site];
+            if(!ws) return '';
+            const riskColor = ws.risk_level==='HIGH'?'#e07070':ws.risk_level==='MEDIUM'?'#d4a44c':'#4ade80';
+            const badgeClass = ws.risk_level==='HIGH'?'badge badge-critical':ws.risk_level==='MEDIUM'?'badge badge-high':'badge badge-low';
+            return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td style="padding:10px 14px;font-size:12px;color:rgba(255,255,255,0.75);">${icons[site]} ${site}</td>
+                <td style="padding:10px 14px;font-size:12px;color:rgba(255,255,255,0.5);text-align:right;">${ws.total.toLocaleString()}</td>
+                <td style="padding:10px 14px;font-size:12px;color:rgba(200,100,100,0.9);text-align:right;">${ws.sql.toLocaleString()}</td>
+                <td style="padding:10px 14px;font-size:12px;color:rgba(180,120,60,0.9);text-align:right;">${ws.xss.toLocaleString()}</td>
+                <td style="padding:10px 14px;font-size:12px;color:rgba(160,140,60,0.9);text-align:right;">${ws.lfi.toLocaleString()}</td>
+                <td style="padding:10px 14px;font-size:12px;color:rgba(140,100,200,0.9);text-align:right;">${ws.cmd.toLocaleString()}</td>
+                <td style="padding:10px 14px;text-align:center;"><span class="${badgeClass}">${ws.risk_level==='HIGH'?'🔴 HIGH':ws.risk_level==='MEDIUM'?'🟡 MEDIUM':'🟢 LOW'}</span></td>
+                <td style="padding:10px 14px;font-size:12px;color:${riskColor};font-weight:600;text-align:right;">${ws.risk_score}%</td>
+            </tr>`;
+        }).join('');
+    }catch(e){console.error('Website risk error:',e);}
+}
+loadWebsiteRisk();
+</script>
+{% endblock %}

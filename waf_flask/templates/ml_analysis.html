@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}ML Analysis{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="page-title">ML Risk Analysis</div>
+    <div class="page-subtitle">Random Forest classifier for real-time URL threat detection</div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px;">
+    <!-- URL Input -->
+    <div class="glass-card" style="padding:24px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:4px;">URL Classifier</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.28);margin-bottom:18px;">Enter any URL to analyze for SQL Injection, XSS, LFI and other threats</div>
+
+        <label class="form-label">Target URL</label>
+        <input type="text" id="url-input" class="form-input" placeholder="http://example.com/?id=1' OR 1=1 --" style="margin-bottom:12px;">
+
+        <div style="margin-bottom:16px;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.28);margin-bottom:8px;">Quick test samples:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                <button onclick="setUrl(this)" data-url="http://example.com/?id=1' OR 1=1 --"
+                    style="font-size:10px;padding:5px 12px;border-radius:7px;background:rgba(200,70,70,0.1);border:1px solid rgba(200,70,70,0.25);color:rgba(200,100,100,0.8);cursor:pointer;">
+                    SQLi Sample
+                </button>
+                <button onclick="setUrl(this)" data-url="http://example.com/?q=<script>alert('xss')</script>"
+                    style="font-size:10px;padding:5px 12px;border-radius:7px;background:rgba(180,100,40,0.1);border:1px solid rgba(180,100,40,0.25);color:rgba(180,120,60,0.8);cursor:pointer;">
+                    XSS Sample
+                </button>
+                <button onclick="setUrl(this)" data-url="http://example.com/?file=../../etc/passwd"
+                    style="font-size:10px;padding:5px 12px;border-radius:7px;background:rgba(150,130,40,0.1);border:1px solid rgba(150,130,40,0.25);color:rgba(160,140,60,0.8);cursor:pointer;">
+                    LFI Sample
+                </button>
+                <button onclick="setUrl(this)" data-url="http://example.com/index.html"
+                    style="font-size:10px;padding:5px 12px;border-radius:7px;background:rgba(74,200,120,0.08);border:1px solid rgba(74,200,120,0.2);color:rgba(74,200,120,0.7);cursor:pointer;">
+                    Benign Sample
+                </button>
+            </div>
+        </div>
+
+        <button onclick="analyzeUrl()" id="analyze-btn" class="btn-primary">
+            Analyze URL →
+        </button>
+        <div id="loading-box" style="display:none;margin-top:16px;text-align:center;">
+            <div style="display:inline-flex;align-items:center;gap:10px;
+                background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+                border-radius:10px;padding:14px 20px;">
+                <div style="width:18px;height:18px;border:2px solid rgba(255,255,255,0.2);
+                    border-top-color:rgba(255,255,255,0.8);border-radius:50%;
+                    animation:spin 0.8s linear infinite;"></div>
+                <div>
+                    <div style="font-size:12px;color:white;font-weight:500;" id="loading-text">
+                        Analyzing URL...</div>
+                    <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;">
+                        Checking ML model, VirusTotal and Google Safe Browsing</div>
+                </div>
+            </div>
+        </div>
+        <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+        </style>
+
+        <div id="result-box" style="display:none;margin-top:16px;">
+            <div id="result-content" style="border-radius:12px;padding:18px;"></div>
+        </div>
+    </div>
+
+    <!-- Model Info -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="glass-card" style="padding:20px;">
+            <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:14px;">Model Information</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;color:rgba(255,255,255,0.35);">Algorithm</span>
+                    <span style="font-size:11px;color:rgba(255,255,255,0.75);font-weight:500;">Random Forest</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;color:rgba(255,255,255,0.35);">Estimators</span>
+                    <span style="font-size:11px;color:rgba(255,255,255,0.75);">400 trees</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;color:rgba(255,255,255,0.35);">Features</span>
+                    <span style="font-size:11px;color:rgba(255,255,255,0.75);">9 features</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;color:rgba(255,255,255,0.35);">Training Data</span>
+                    <span style="font-size:11px;color:rgba(255,255,255,0.75);">51,009 logs</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;color:rgba(255,255,255,0.35);">Balancing</span>
+                    <span style="font-size:11px;color:rgba(255,255,255,0.75);">SMOTE</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card" style="padding:20px;">
+            <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:12px;">Features Extracted</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                {% for feat in [('Text Length','rgba(255,255,255,0.3)'),('Special Characters','rgba(255,255,255,0.3)'),('Digit Count','rgba(255,255,255,0.3)'),('Quote Count','rgba(255,255,255,0.3)'),('Equal Signs','rgba(255,255,255,0.3)'),('SQL Keywords','rgba(200,80,80,0.6)'),('XSS Patterns','rgba(180,100,40,0.6)'),('LFI Patterns','rgba(150,130,40,0.6)'),('CMD Patterns','rgba(120,100,160,0.6)')] %}
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:5px;height:5px;border-radius:50%;background:{{ feat[1] }};flex-shrink:0;"></div>
+                    <span style="font-size:11px;color:rgba(255,255,255,0.5);">{{ feat[0] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- History -->
+<div class="glass-card" style="padding:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);">Analysis History</div>
+        <button onclick="clearHistory()" style="font-size:10px;color:rgba(255,255,255,0.25);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;">
+            Clear History
+        </button>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>URL</th>
+                <th>Result</th>
+                <th>Malicious Probability</th>
+            </tr>
+        </thead>
+        <tbody id="history-table">
+            <tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.25);padding:20px;">No analysis history yet</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+let history=[];
+
+function setUrl(btn){document.getElementById('url-input').value=btn.getAttribute('data-url');}
+
+async function clearHistory(){
+    await fetch('/api/history/clear',{method:'POST'});
+    history=[];
+    renderHistory();
+}
+
+async function loadHistory(){
+    try{
+        const res=await fetch('/api/history');
+        history=await res.json();
+        renderHistory();
+    }catch(e){console.error(e);}
+}
+
+function renderHistory(){
+    const tbody=document.getElementById('history-table');
+    if(!history.length){
+        tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.25);padding:20px;">No analysis history yet</td></tr>';
+        return;
+    }
+    tbody.innerHTML=history.map(h=>{
+        const isMal=h.label==='Malicious';
+        const riskColor=h.risk_score>=70?'rgba(200,80,80,0.9)':h.risk_score>=40?'rgba(180,130,50,0.9)':'rgba(74,180,100,0.9)';
+        return `<tr>
+            <td style="color:rgba(255,255,255,0.35);font-size:11px;">${h.timestamp}</td>
+            <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-family:monospace;color:rgba(255,255,255,0.55);" title="${h.url}">${h.url}</td>
+            <td><span class="badge ${isMal?'badge-sql':'badge-other'}" style="${!isMal?'background:rgba(74,180,100,0.1);color:rgba(74,200,120,0.8);border-color:rgba(74,180,100,0.2);':''}">${isMal?'⚠ Malicious':'✓ Benign'}</span></td>
+            <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="width:60px;height:4px;border-radius:4px;background:rgba(255,255,255,0.08);">
+                        <div style="height:100%;border-radius:4px;width:${h.risk_score}%;background:${riskColor};"></div>
+                    </div>
+                    <span style="font-size:11px;font-weight:600;color:${riskColor};">${h.risk_score}%</span>
+                    <span style="font-size:10px;color:rgba(255,255,255,0.25);">malicious probability</span>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function analyzeUrl(){
+    const url=document.getElementById('url-input').value.trim();
+    if(!url) return;
+    const btn=document.getElementById('analyze-btn');
+    const loading=document.getElementById('loading-box');
+    const resultBox=document.getElementById('result-box');
+    btn.textContent='Analyzing...';btn.disabled=true;
+    loading.style.display='block';
+    resultBox.style.display='none';
+    
+    const steps=['Analyzing URL...','Checking ML model...','Querying VirusTotal...','Checking Google Safe Browsing...','Computing final verdict...'];
+    let step=0;
+    const stepInterval=window.setInterval(()=>{
+        document.getElementById('loading-text').textContent=steps[step%steps.length];
+        step++;
+    },1500);
+    try{
+        const res=await fetch('/api/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});
+        const data=await res.json();
+        const isMal=data.label==='Malicious';
+        const riskColor=data.risk_score>=70?'rgba(200,80,80,0.9)':data.risk_score>=40?'rgba(180,130,50,0.9)':'rgba(74,180,100,0.9)';
+        const box=document.getElementById('result-box');
+        const content=document.getElementById('result-content');
+        box.style.display='block';
+        content.style.background=isMal?'rgba(200,60,60,0.08)':'rgba(74,180,100,0.06)';
+        content.style.border=isMal?'1px solid rgba(200,60,60,0.2)':'1px solid rgba(74,180,100,0.18)';
+        content.innerHTML=`
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span style="font-size:14px;font-weight:700;color:${riskColor};">${isMal?'⚠ MALICIOUS DETECTED':'✓ BENIGN — SAFE'}</span>
+                <span style="font-size:20px;font-weight:700;color:${riskColor};">${data.risk_score}%</span>
+            </div>
+            <div style="width:100%;height:5px;border-radius:5px;background:rgba(255,255,255,0.06);margin-bottom:10px;">
+                <div style="height:100%;border-radius:5px;width:${data.risk_score}%;background:${riskColor};transition:width 0.5s ease;"></div>
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:6px;">
+                <strong style="color:${riskColor};">Malicious Probability: ${data.risk_score}%</strong>
+                — ${isMal?'This URL contains attack patterns and should be blocked.':'No attack patterns detected. This URL appears safe.'}
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.35);">
+                <span style="color:rgba(255,255,255,0.25);">URL:</span>
+                <span style="font-family:monospace;margin-left:4px;">${data.url}</span>
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.22);margin-top:4px;">Analyzed at ${data.timestamp}</div>
+
+            <div style="margin-top:14px;padding:16px 20px;border-radius:12px;
+                background:${data.final_verdict==='Malicious'?'rgba(200,60,60,0.15)':'rgba(74,180,100,0.12)'};
+                border:2px solid ${data.final_verdict==='Malicious'?'rgba(200,60,60,0.4)':'rgba(74,180,100,0.35)'};
+                text-align:center;">
+                <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">
+                    Final Verdict — ML + VirusTotal + Google Safe Browsing
+                </div>
+                <div style="font-size:22px;font-weight:800;color:${data.final_verdict==='Malicious'?'#e07070':'#4ade80'};margin-bottom:4px;">
+                    ${data.final_verdict==='Malicious'?'⚠ MALICIOUS':'✓ SAFE'}
+                </div>
+                <div style="font-size:12px;color:${data.final_verdict==='Malicious'?'rgba(220,100,100,0.7)':'rgba(74,180,100,0.7)'};">
+                    ${data.final_verdict==='Malicious'?'This URL should be blocked immediately':'This URL appears clean and safe'}
+                </div>
+            </div>
+
+            <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;">
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;">🔍 VirusTotal</div>
+                    ${data.virustotal && data.virustotal.available ? 
+                        `<div style="font-size:12px;color:${data.virustotal.malicious > 0 ? '#e07070' : '#4ade80'};font-weight:600;">
+                            ${data.virustotal.malicious > 0 ? '⚠ ' + data.virustotal.malicious + '/' + data.virustotal.total_engines + ' engines flagged' : '✓ Clean — 0/' + data.virustotal.total_engines + ' engines'}
+                        </div>` :
+                        '<div style="font-size:11px;color:rgba(255,255,255,0.3);">URL not in database yet</div>'
+                    }
+                </div>
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;">
+                    <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;">🛡️ Google Safe Browsing</div>
+                    ${data.google_safebrowsing && data.google_safebrowsing.available ?
+                        `<div style="font-size:12px;color:${!data.google_safebrowsing.safe ? '#e07070' : '#4ade80'};font-weight:600;">
+                            ${!data.google_safebrowsing.safe ? '⚠ Unsafe — ' + data.google_safebrowsing.threat_type : '✓ Safe — No threats detected'}
+                        </div>` :
+                        '<div style="font-size:11px;color:rgba(255,255,255,0.3);">Unable to check</div>'
+                    }
+                </div>
+            </div>
+            <div style="margin-top:14px;padding:16px 20px;border-radius:12px;
+                background:${data.final_verdict==='Malicious'?'rgba(200,60,60,0.15)':'rgba(74,180,100,0.12)'};
+                border:2px solid ${data.final_verdict==='Malicious'?'rgba(200,60,60,0.4)':'rgba(74,180,100,0.35)'};
+                text-align:center;">
+                <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">
+                    Final Verdict — ML + VirusTotal + Google Safe Browsing
+                </div>
+                <div style="font-size:22px;font-weight:800;color:${data.final_verdict==='Malicious'?'#e07070':'#4ade80'};margin-bottom:4px;">
+                    ${data.final_verdict==='Malicious'?'⚠ MALICIOUS':'✓ SAFE'}
+                </div>
+                <div style="font-size:12px;color:${data.final_verdict==='Malicious'?'rgba(220,100,100,0.7)':'rgba(74,180,100,0.7)'};">
+                    ${data.final_verdict==='Malicious'?'This URL should be blocked immediately':'This URL appears clean and safe'}
+                </div>
+            </div>`;
+await fetch('/api/history',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(data)
+        });
+        history.unshift(data);
+        renderHistory();
+
+    }catch(e){console.error(e);}
+    finally{
+        btn.textContent='Analyze URL →';
+        btn.disabled=false;
+        document.getElementById('loading-box').style.display='none';
+        window.clearInterval(stepInterval);
+    }
+}
+
+document.getElementById('url-input').addEventListener('keypress',e=>{if(e.key==='Enter') analyzeUrl();});
+loadHistory();
+</script>
+{% endblock %}

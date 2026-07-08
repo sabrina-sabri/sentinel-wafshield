@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL — {% block title %}Dashboard{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+        body{background:linear-gradient(135deg,#080d18 0%,#0b1520 25%,#0f2040 50%,#1a3a5c 75%,#1e5a7a 100%);min-height:100vh;color:white;}
+        body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 70% 20%,rgba(30,90,122,0.2) 0%,transparent 55%),radial-gradient(ellipse at 20% 80%,rgba(26,58,92,0.15) 0%,transparent 50%);pointer-events:none;z-index:0;}
+        .layout{display:flex;min-height:100vh;position:relative;z-index:1;}
+        /* SIDEBAR */
+        .sidebar{width:230px;min-height:100vh;flex-shrink:0;
+            background:linear-gradient(180deg,rgba(4,7,16,0.94) 0%,rgba(6,10,22,0.90) 100%);
+            backdrop-filter:blur(20px);
+            border-right:1px solid rgba(255,255,255,0.06);
+            box-shadow:4px 0 30px rgba(0,0,0,0.4),inset -1px 0 0 rgba(255,255,255,0.03);
+            padding:22px 14px;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;}
+        .sidebar-logo{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+        .brand-name{font-size:14px;font-weight:800;color:white;letter-spacing:3px;}
+        .brand-sub{font-size:9px;color:rgba(255,255,255,0.25);letter-spacing:1px;}
+        .es-status{display:flex;align-items:center;gap:5px;margin:6px 0 16px;}
+        .es-dot{width:5px;height:5px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;}
+        .es-dot.offline{background:#ef4444;box-shadow:0 0 6px #ef4444;}
+        .es-text{font-size:9px;color:rgba(255,255,255,0.28);}
+        .sidebar-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.07),transparent);margin:8px 0;}
+        .nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;margin-bottom:2px;cursor:pointer;text-decoration:none;position:relative;transition:all 0.2s;}
+        .nav-item:hover{background:rgba(255,255,255,0.04);}
+        .nav-item.active{
+            background:linear-gradient(135deg,rgba(30,90,122,0.2),rgba(26,58,92,0.15));
+            border:1px solid rgba(255,255,255,0.08);
+            box-shadow:0 4px 20px rgba(0,0,0,0.2),0 0 20px rgba(30,90,122,0.08),inset 0 1px 0 rgba(255,255,255,0.06);}
+        .nav-item.active::before{content:'';position:absolute;left:0;top:20%;height:60%;width:2px;background:linear-gradient(180deg,transparent,rgba(255,255,255,0.6),transparent);border-radius:2px;}
+        .nav-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+            background:linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02));
+            border-top:1px solid rgba(255,255,255,0.1);border-left:1px solid rgba(255,255,255,0.07);
+            border-right:1px solid rgba(255,255,255,0.02);border-bottom:1px solid rgba(0,0,0,0.2);
+            box-shadow:0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.08);}
+        .nav-item.active .nav-icon{
+            background:linear-gradient(135deg,rgba(30,90,140,0.35),rgba(30,90,122,0.2));
+            border-top:1px solid rgba(255,255,255,0.15);
+            box-shadow:0 2px 12px rgba(30,90,122,0.25),0 0 15px rgba(30,90,122,0.1),inset 0 1px 0 rgba(255,255,255,0.12);}
+        .nav-label{font-size:12px;color:rgba(255,255,255,0.38);font-weight:400;}
+        .nav-item.active .nav-label{color:rgba(255,255,255,0.92);font-weight:500;}
+        .nav-item:hover .nav-label{color:rgba(255,255,255,0.6);}
+        .nav-spacer{flex:1;}
+        .user-card{padding:10px;border-radius:10px;
+            background:linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02));
+            border-top:1px solid rgba(255,255,255,0.09);border-left:1px solid rgba(255,255,255,0.06);
+            border-right:1px solid rgba(255,255,255,0.02);border-bottom:1px solid rgba(0,0,0,0.15);
+            box-shadow:0 4px 15px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.05);}
+        .user-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+        .user-avatar{width:28px;height:28px;border-radius:7px;
+            background:linear-gradient(135deg,#1a3a5c,#1e5a7a);
+            border:1px solid rgba(255,255,255,0.12);
+            box-shadow:0 2px 8px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.1);
+            display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;}
+        .user-name{font-size:12px;color:white;font-weight:500;}
+        .user-role{font-size:9px;color:rgba(255,255,255,0.3);}
+        .signout-btn{display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(255,255,255,0.22);cursor:pointer;text-decoration:none;transition:all 0.2s;}
+        .signout-btn:hover{color:rgba(239,68,68,0.7);}
+        /* MAIN */
+        .main-content{margin-left:230px;flex:1;padding:28px;min-height:100vh;}
+        .page-header{margin-bottom:22px;}
+        .page-title{font-size:20px;font-weight:700;color:white;margin-bottom:4px;text-shadow:0 2px 10px rgba(0,0,0,0.3);}
+        .page-subtitle{font-size:11px;color:rgba(255,255,255,0.3);}
+        /* GLASS CARDS */
+        .glass-card{
+            background:linear-gradient(135deg,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.02) 100%);
+            backdrop-filter:blur(20px);
+            border-top:1px solid rgba(255,255,255,0.12);
+            border-left:1px solid rgba(255,255,255,0.08);
+            border-right:1px solid rgba(255,255,255,0.03);
+            border-bottom:1px solid rgba(0,0,0,0.2);
+            border-radius:14px;
+            box-shadow:0 8px 32px rgba(0,0,0,0.3),0 0 40px rgba(30,90,122,0.05),inset 0 1px 0 rgba(255,255,255,0.08);
+            position:relative;overflow:hidden;}
+        .glass-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);}
+        .glass-card:hover{
+            border-color:rgba(255,255,255,0.12);
+            box-shadow:0 12px 40px rgba(0,0,0,0.35),0 0 60px rgba(30,90,122,0.1),inset 0 1px 0 rgba(255,255,255,0.1);
+            transform:translateY(-1px);transition:all 0.3s ease;}
+        /* STAT CARDS */
+        .stat-card{
+            background:linear-gradient(135deg,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.02) 100%);
+            backdrop-filter:blur(20px);
+            border-top:1px solid rgba(255,255,255,0.12);
+            border-left:1px solid rgba(255,255,255,0.08);
+            border-right:1px solid rgba(255,255,255,0.03);
+            border-bottom:1px solid rgba(0,0,0,0.2);
+            border-radius:14px;padding:20px;
+            box-shadow:0 8px 32px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.08);
+            transition:all 0.3s ease;position:relative;overflow:hidden;}
+        .stat-card::after{content:'';position:absolute;top:-30%;right:-20%;width:60%;height:80%;background:linear-gradient(135deg,rgba(255,255,255,0.03),transparent);border-radius:50%;pointer-events:none;}
+        .stat-card:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.35),0 0 50px rgba(30,90,122,0.08),inset 0 1px 0 rgba(255,255,255,0.1);}
+        .stat-label{font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;}
+        .stat-value{font-size:26px;font-weight:700;color:white;text-shadow:0 2px 10px rgba(0,0,0,0.3);margin-bottom:4px;}
+        .stat-sub{font-size:10px;color:rgba(255,255,255,0.22);}
+        /* TABLE */
+        .data-table{width:100%;border-collapse:collapse;}
+        .data-table th{background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.35);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;padding:10px 14px;text-align:left;}
+        .data-table td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;color:rgba(255,255,255,0.65);}
+        .data-table tr:hover td{background:rgba(255,255,255,0.02);}
+        /* BADGES */
+        .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;}
+        .badge-sql{background:rgba(200,70,70,0.15);color:#c87070;border:1px solid rgba(200,70,70,0.22);box-shadow:0 0 10px rgba(200,70,70,0.08);}
+        .badge-xss{background:rgba(180,100,40,0.15);color:#b07838;border:1px solid rgba(180,100,40,0.22);box-shadow:0 0 10px rgba(180,100,40,0.08);}
+        .badge-lfi{background:rgba(150,130,40,0.15);color:#988030;border:1px solid rgba(150,130,40,0.22);}
+        .badge-other{background:rgba(80,100,130,0.12);color:#607080;border:1px solid rgba(80,100,130,0.18);}
+        .badge-critical{background:rgba(200,50,50,0.18);color:#c04040;border:1px solid rgba(200,50,50,0.25);box-shadow:0 0 12px rgba(200,50,50,0.1);}
+        .badge-high{background:rgba(180,90,30,0.18);color:#a05820;border:1px solid rgba(180,90,30,0.25);}
+        .badge-medium{background:rgba(150,130,40,0.15);color:#907828;border:1px solid rgba(150,130,40,0.22);}
+        .badge-low{background:rgba(70,90,110,0.12);color:#506070;border:1px solid rgba(70,90,110,0.18);}
+        /* INPUTS */
+        .form-input{width:100%;background:rgba(255,255,255,0.05);border-top:1px solid rgba(255,255,255,0.1);border-left:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.03);border-bottom:1px solid rgba(0,0,0,0.2);border-radius:10px;padding:11px 14px;color:white;font-size:13px;outline:none;transition:all 0.2s;box-shadow:inset 0 2px 6px rgba(0,0,0,0.15);}
+        .form-input::placeholder{color:rgba(255,255,255,0.2);}
+        .form-input:focus{border-top-color:rgba(74,158,218,0.4);border-left-color:rgba(74,158,218,0.3);box-shadow:inset 0 2px 6px rgba(0,0,0,0.15),0 0 0 2px rgba(74,158,218,0.1);}
+        .form-label{font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);margin-bottom:6px;display:block;letter-spacing:0.8px;text-transform:uppercase;}
+        .btn-primary{width:100%;padding:12px;border-radius:10px;font-size:13px;font-weight:600;color:white;cursor:pointer;
+            background:linear-gradient(135deg,#1a3a5c,#1e5a7a);
+            border-top:1px solid rgba(255,255,255,0.15);border-left:1px solid rgba(255,255,255,0.1);
+            border-right:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(0,0,0,0.3);
+            box-shadow:0 4px 20px rgba(30,90,122,0.3),0 2px 6px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.12);
+            text-shadow:0 1px 3px rgba(0,0,0,0.4);transition:all 0.2s;}
+        .btn-primary:hover{background:linear-gradient(135deg,#1e4a6c,#22688a);box-shadow:0 6px 25px rgba(30,90,122,0.4),inset 0 1px 0 rgba(255,255,255,0.15);}
+        /* SCROLLBAR */
+        ::-webkit-scrollbar{width:5px;}
+        ::-webkit-scrollbar-track{background:transparent;}
+        ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}
+        /* CHART COLORS */
+        .chart-container{position:relative;}
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <svg width="26" height="30" viewBox="0 0 100 115">
+                <defs>
+                    <linearGradient id="sh1" x1="15%" y1="0%" x2="85%" y2="100%">
+                        <stop offset="0%" stop-color="#f8f8f8"/>
+                        <stop offset="25%" stop-color="#b0b0b0"/>
+                        <stop offset="55%" stop-color="#e8e8e8"/>
+                        <stop offset="100%" stop-color="#808080"/>
+                    </linearGradient>
+                    <linearGradient id="sh2" x1="85%" y1="0%" x2="15%" y2="100%">
+                        <stop offset="0%" stop-color="#d8d8d8"/>
+                        <stop offset="40%" stop-color="#686868"/>
+                        <stop offset="100%" stop-color="#b0b0b0"/>
+                    </linearGradient>
+                    <linearGradient id="sh3" x1="10%" y1="0%" x2="90%" y2="100%">
+                        <stop offset="0%" stop-color="#f0f0f0"/>
+                        <stop offset="35%" stop-color="#c8c8c8"/>
+                        <stop offset="65%" stop-color="#888"/>
+                        <stop offset="100%" stop-color="#d0d0d0"/>
+                    </linearGradient>
+                </defs>
+                <path d="M50 3 L93 19 L93 56 Q93 86 50 112 Q7 86 7 56 L7 19 Z" fill="none" stroke="url(#sh1)" stroke-width="3.5"/>
+                <path d="M50 13 L83 27 L83 55 Q83 79 50 100 Q17 79 17 55 L17 27 Z" fill="none" stroke="url(#sh2)" stroke-width="2.5"/>
+                <path d="M50 23 L73 34 L73 54 Q73 72 50 88 Q27 72 27 54 L27 34 Z" fill="url(#sh3)" stroke="url(#sh1)" stroke-width="2" opacity="0.88"/>
+                <path d="M50 23 L73 34 L73 54 Q73 72 50 88 Q27 72 27 54 L27 34 Z" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="0.8"/>
+            </svg>
+            <div>
+                <div class="brand-name">SENTINEL</div>
+                <div class="brand-sub">WAFShield AI</div>
+            </div>
+        </div>
+        <div class="es-status">
+            <div class="es-dot" id="es-dot"></div>
+            <div class="es-text" id="es-text">Checking status...</div>
+        </div>
+        <div class="sidebar-divider"></div>
+        <a href="/dashboard" class="nav-item {% if request.path == '/dashboard' %}active{% endif %}">
+            <div class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,{% if request.path == '/dashboard' %}0.85{% else %}0.4{% endif %})" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </div>
+            <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="/ml-analysis" class="nav-item {% if request.path == '/ml-analysis' %}active{% endif %}">
+            <div class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,{% if request.path == '/ml-analysis' %}0.85{% else %}0.4{% endif %})" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+            <span class="nav-label">ML Analysis</span>
+        </a>
+        <a href="/evaluation" class="nav-item {% if request.path == '/evaluation' %}active{% endif %}">
+            <div class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,{% if request.path == '/evaluation' %}0.85{% else %}0.4{% endif %})" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <span class="nav-label">Evaluation</span>
+        </a>
+        <a href="/logs" class="nav-item {% if request.path == '/logs' %}active{% endif %}">
+            <div class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,{% if request.path == '/logs' %}0.85{% else %}0.4{% endif %})" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <span class="nav-label">Attack Logs</span>
+        </a>
+        <div class="sidebar-divider"></div>
+        {% if role == 'admin' %}
+        <a href="/admin" class="nav-item {% if request.path == '/admin' %}active{% endif %}">
+            <div class="nav-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,{% if request.path == '/admin' %}0.85{% else %}0.4{% endif %})" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+            </div>
+            <span class="nav-label">Admin</span>
+        </a>
+        {% endif %}
+        <div class="nav-spacer"></div>
+        <div class="sidebar-divider"></div>
+        <div class="user-card">
+            <div class="user-row">
+                <div class="user-avatar">{{ username[0].upper() }}</div>
+                <div>
+                    <div class="user-name">{{ username }}</div>
+                    <div class="user-role">{{ role }}</div>
+                </div>
+            </div>
+            <a href="/logout" class="signout-btn">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign out
+            </a>
+        </div>
+    </aside>
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+<script>
+async function checkES(){
+    try{
+        const r=await fetch('/api/stats');
+        const d=await r.json();
+        if(d.error) throw new Error();
+        document.getElementById('es-dot').className='es-dot';
+        document.getElementById('es-text').textContent='Elasticsearch connected';
+    }catch{
+        document.getElementById('es-dot').className='es-dot offline';
+        document.getElementById('es-text').textContent='Elasticsearch offline';
+    }
+}
+checkES();
+setInterval(checkES,30000);
+</script>
+</body>
+</html>

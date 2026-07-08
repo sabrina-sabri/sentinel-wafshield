@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL — Create Account</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+        body{background:#080d18;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+        canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;}
+        .card{position:relative;z-index:2;
+            background:linear-gradient(160deg,rgba(20,38,65,0.72) 0%,rgba(8,13,24,0.82) 100%);
+            backdrop-filter:blur(32px);
+            border-top:1px solid rgba(255,255,255,0.14);
+            border-left:1px solid rgba(255,255,255,0.1);
+            border-right:1px solid rgba(255,255,255,0.04);
+            border-bottom:1px solid rgba(0,0,0,0.3);
+            border-radius:22px;padding:36px 32px;width:340px;
+            box-shadow:0 20px 60px rgba(0,0,0,0.6),0 0 80px rgba(30,90,122,0.12),inset 0 1px 0 rgba(255,255,255,0.1);}
+        .shield-wrap{text-align:center;margin-bottom:14px;}
+        .card-title{font-size:19px;font-weight:700;color:white;text-align:center;margin-bottom:4px;}
+        .card-sub{font-size:11px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:22px;}
+        .field-label{font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);margin-bottom:6px;display:block;letter-spacing:0.8px;text-transform:uppercase;}
+        .field-input{width:100%;
+            background:linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02));
+            border-top:1px solid rgba(255,255,255,0.1);
+            border-left:1px solid rgba(255,255,255,0.08);
+            border-right:1px solid rgba(255,255,255,0.03);
+            border-bottom:1px solid rgba(0,0,0,0.2);
+            border-radius:10px;padding:11px 14px;color:white;font-size:13px;outline:none;
+            box-shadow:inset 0 2px 6px rgba(0,0,0,0.2);margin-bottom:13px;transition:all 0.2s;}
+        .field-input::placeholder{color:rgba(255,255,255,0.18);}
+        .field-input:focus{border-top-color:rgba(74,158,218,0.4);box-shadow:inset 0 2px 6px rgba(0,0,0,0.2),0 0 0 2px rgba(74,158,218,0.1);}
+        .btn{width:100%;padding:12px;border-radius:10px;font-size:13px;font-weight:600;color:white;cursor:pointer;
+            background:linear-gradient(135deg,#1a3a5c,#1e5a7a);
+            border-top:1px solid rgba(255,255,255,0.15);border-left:1px solid rgba(255,255,255,0.1);
+            border-bottom:1px solid rgba(0,0,0,0.3);
+            box-shadow:0 4px 20px rgba(30,90,122,0.3),inset 0 1px 0 rgba(255,255,255,0.12);
+            margin-bottom:13px;transition:all 0.2s;}
+        .btn:hover{background:linear-gradient(135deg,#1e4a6c,#22688a);}
+        .link{text-align:center;font-size:11px;color:rgba(255,255,255,0.25);}
+        .link a{color:rgba(255,255,255,0.55);text-decoration:none;}
+        .link a:hover{color:white;}
+        .msg-box{border-radius:9px;padding:10px 13px;margin-bottom:13px;font-size:12px;}
+        .msg-error{background:rgba(200,50,50,0.1);border:1px solid rgba(200,50,50,0.25);color:rgba(220,100,100,0.9);}
+        .msg-success{background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:rgba(74,222,128,0.9);}
+        .role-note{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:9px;padding:9px 13px;margin-top:13px;font-size:10px;color:rgba(255,255,255,0.3);text-align:center;}
+    </style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="card">
+    <div class="shield-wrap">
+        <svg width="44" height="50" viewBox="0 0 100 115">
+            <defs>
+                <linearGradient id="c1" x1="15%" y1="0%" x2="85%" y2="100%">
+                    <stop offset="0%" stop-color="#f8f8f8"/><stop offset="25%" stop-color="#b0b0b0"/>
+                    <stop offset="55%" stop-color="#e8e8e8"/><stop offset="100%" stop-color="#808080"/>
+                </linearGradient>
+                <linearGradient id="c2" x1="85%" y1="0%" x2="15%" y2="100%">
+                    <stop offset="0%" stop-color="#d8d8d8"/><stop offset="40%" stop-color="#686868"/><stop offset="100%" stop-color="#b0b0b0"/>
+                </linearGradient>
+                <linearGradient id="c3" x1="10%" y1="0%" x2="90%" y2="100%">
+                    <stop offset="0%" stop-color="#f0f0f0"/><stop offset="35%" stop-color="#c8c8c8"/>
+                    <stop offset="65%" stop-color="#888"/><stop offset="100%" stop-color="#d0d0d0"/>
+                </linearGradient>
+            </defs>
+            <path d="M50 3 L93 19 L93 56 Q93 86 50 112 Q7 86 7 56 L7 19 Z" fill="none" stroke="url(#c1)" stroke-width="3.5"/>
+            <path d="M50 13 L83 27 L83 55 Q83 79 50 100 Q17 79 17 55 L17 27 Z" fill="none" stroke="url(#c2)" stroke-width="2.5"/>
+            <path d="M50 23 L73 34 L73 54 Q73 72 50 88 Q27 72 27 54 L27 34 Z" fill="url(#c3)" stroke="url(#c1)" stroke-width="2" opacity="0.88"/>
+            <path d="M50 23 L73 34 L73 54 Q73 72 50 88 Q27 72 27 54 L27 34 Z" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="0.8"/>
+        </svg>
+    </div>
+    <div class="card-title">Create Account</div>
+    <div class="card-sub">Register as a security analyst</div>
+    {% if error %}
+    <div class="msg-box msg-error">⚠ {{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="msg-box msg-success">✓ {{ success }}</div>
+    {% endif %}
+    <form method="POST" action="/signup">
+        <label class="field-label">Username</label>
+        <input type="text" name="username" class="field-input" placeholder="Choose a username" required autocomplete="off">
+        <label class="field-label">Password</label>
+        <input type="password" name="password" class="field-input" placeholder="At least 6 characters" required>
+        <label class="field-label">Confirm Password</label>
+        <input type="password" name="confirm" class="field-input" placeholder="Repeat your password" required>
+        <button type="submit" class="btn">Create Account</button>
+    </form>
+    <div class="link">Already have an account? <a href="/">Sign in</a></div>
+    <div class="role-note">🔒 New accounts are created as Analyst role. Contact admin for elevated access.</div>
+</div>
+<script>
+const canvas=document.getElementById('bg');
+const ctx=canvas.getContext('2d');
+let t=0,W,H,stars=[];
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;stars=Array.from({length:120},()=>({x:Math.random()*W,y:Math.random()*H*0.55,r:Math.random()*1.4+0.2,o:Math.random()*0.5+0.15}));}
+resize();window.addEventListener('resize',resize);
+function draw(){
+    ctx.clearRect(0,0,W,H);
+    const g=ctx.createRadialGradient(W*0.55,H*0.4,0,W*0.55,H*0.4,W*0.9);
+    g.addColorStop(0,'#1e5a7a');g.addColorStop(0.3,'#1a3a5c');g.addColorStop(0.65,'#0d1929');g.addColorStop(1,'#080d18');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    stars.forEach(s=>{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${s.o+Math.sin(t*0.4+s.x*0.01)*0.12})`;ctx.fill();});
+    const hg=ctx.createRadialGradient(W/2,H*0.5,0,W/2,H*0.5,W*0.4);
+    hg.addColorStop(0,'rgba(30,90,122,0.3)');hg.addColorStop(1,'rgba(30,90,122,0)');
+    ctx.fillStyle=hg;ctx.fillRect(0,0,W,H);
+    const hz=H*0.5;
+    ctx.strokeStyle='rgba(74,150,210,0.1)';ctx.lineWidth=0.5;
+    for(let i=0;i<=24;i++){const px=(i/24)*W;ctx.beginPath();ctx.moveTo(px,hz);ctx.lineTo(W/2+(px-W/2)*3.5,H*1.3);ctx.stroke();}
+    for(let j=1;j<=18;j++){const fy=hz+(j/18)*(H-hz)*1.2;const sp=(fy-hz)/(H-hz);ctx.beginPath();ctx.moveTo(W/2-sp*W*2,fy);ctx.lineTo(W/2+sp*W*2,fy);ctx.stroke();}
+    [{a:42,f:0.011,sp:0.32,ph:0,al:0.28,lw:1.2,rows:9},{a:26,f:0.017,sp:0.26,ph:2.1,al:0.18,lw:0.8,rows:7},{a:16,f:0.024,sp:0.42,ph:4.2,al:0.12,lw:0.5,rows:5}].forEach(w=>{
+        for(let r=0;r<w.rows;r++){
+            ctx.beginPath();ctx.strokeStyle=`rgba(74,158,218,${w.al-r*0.022})`;ctx.lineWidth=w.lw*(1-r*0.08);
+            for(let x=0;x<=W;x+=2){const wy=Math.sin(x*w.f+t*w.sp+w.ph)*w.a+Math.sin(x*w.f*1.8+t*w.sp*0.7+w.ph)*w.a*0.35;x===0?ctx.moveTo(x,hz-r*5.5-8+wy):ctx.lineTo(x,hz-r*5.5-8+wy);}
+            ctx.stroke();}});
+    t+=0.018;requestAnimationFrame(draw);}
+draw();
+</script>
+</body>
+</html>
