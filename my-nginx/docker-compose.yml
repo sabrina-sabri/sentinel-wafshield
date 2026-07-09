@@ -1,0 +1,21 @@
+services:
+  sentinel_nginx:
+    build: .
+    container_name: amy_nginx
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      - PARANOIA=1
+      - ANOMALY_INBOUND=5
+      - ANOMALY_OUTBOUND=4
+      - PORT=8080
+      - PROXY=1
+      - BACKEND=http://amy_flask:5000
+      - PROXY_SSL=off
+    networks:
+      - fyp_sentinet
+
+networks:
+  fyp_sentinet:
+    external: true
