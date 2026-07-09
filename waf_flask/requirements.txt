@@ -1,0 +1,9 @@
+flask==3.1.0
+flask-login==0.6.3
+elasticsearch==8.15.0
+scikit-learn==1.6.0
+imbalanced-learn==0.13.0
+pandas==2.2.3
+numpy==1.26.4
+requests==2.31.0
+plotly==5.18.0

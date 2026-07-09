@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from imblearn.over_sampling import SMOTE
 import pickle
 
-es = Elasticsearch(["http://localhost:9200"])
+es = Elasticsearch(["http://amy_elasticsearch:9200"])
 
 def extract_features(text):
     text = str(text).lower()
@@ -130,7 +130,7 @@ print(classification_report(y_test, y_pred))
 print("Confusion Matrix:")
 print(confusion_matrix(y_test, y_pred))
 
-with open('/home/amelia/SENTINEL/waf_flask/rf_model.pkl', 'wb') as f:
+with open('/app/rf_model.pkl', 'wb') as f:
     pickle.dump(model, f)
 
 print("\n✅ Model saved!")

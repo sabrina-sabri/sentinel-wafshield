@@ -14,10 +14,10 @@ app.secret_key = 'sentinel_wafshield_2024'
 VIRUSTOTAL_API_KEY = "eac917e9f93548c67f7a94e9c29bd7958493dd35662140ba6ec24588998a3f20"
 GOOGLE_SB_API_KEY = "AIzaSyA-7oTz4CtkvokBphrU-5Zc8l1mHbl_QaA"
 
-DB_PATH = '/home/amelia/SENTINEL/waf_users.db'
-MODEL_PATH = '/home/amelia/SENTINEL/waf_flask/rf_model.pkl'
+DB_PATH = '/app/waf_users.db'
+MODEL_PATH = '/app/rf_model.pkl'
 
-es = Elasticsearch("http://localhost:9200")
+es = Elasticsearch("http://amy_elasticsearch:9200")
 
 with open(MODEL_PATH, 'rb') as f:
     model = pickle.load(f)
@@ -547,7 +547,7 @@ def api_parse_logs():
     try:
         import subprocess
         result = subprocess.run(
-            ['python3', '/home/amelia/SENTINEL/parse_modsec.py'],
+            ['python3', '/app/parse_modsec.py'],
             capture_output=True, text=True)
         indexed = 0
         for line in result.stdout.split('\n'):
@@ -564,10 +564,10 @@ def api_parse_logs():
 def api_run_attacks():
     try:
         import subprocess, time
-        subprocess.Popen(['bash', '/home/amelia/SENTINEL/attack.sh'])
+        subprocess.Popen(['bash', '/app/attack.sh'])
         time.sleep(8)
         result = subprocess.run(
-            ['python3', '/home/amelia/SENTINEL/parse_modsec.py'],
+            ['python3', '/app/parse_modsec.py'],
             capture_output=True, text=True)
         indexed = 0
         for line in result.stdout.split('\n'):
@@ -586,7 +586,7 @@ def api_retrain():
         import subprocess
         global model
         result = subprocess.run(
-            ['python3', '/home/amelia/SENTINEL/waf_flask/train_model.py'],
+            ['python3', '/app/train_model.py'],
             capture_output=True, text=True,
             cwd='/home/amelia/SENTINEL/waf_flask')
         with open(MODEL_PATH, 'rb') as f:
