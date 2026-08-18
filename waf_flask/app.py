@@ -11,8 +11,8 @@ app = Flask(__name__)
 app.secret_key = 'sentinel_wafshield_2024'
 
 # External API Keys
-VIRUSTOTAL_API_KEY = "eac917e9f93548c67f7a94e9c29bd7958493dd35662140ba6ec24588998a3f20"
-GOOGLE_SB_API_KEY = "AIzaSyA-7oTz4CtkvokBphrU-5Zc8l1mHbl_QaA"
+VIRUSTOTAL_API_KEY = "xxxx"
+GOOGLE_SB_API_KEY = "xx"
 
 DB_PATH = '/app/waf_users.db'
 MODEL_PATH = '/app/rf_model.pkl'
